@@ -1,4 +1,4 @@
-- 👋 Hi, I’m Gabin Foche
+- 👋 Hi, I’m Gabin Foche Kamgang
 - 👀 I’m a Data Enthusisat
 - 🌱 I’m currently learning machine learning and Artificial Intelligence
 - 💞️ I’m looking to collaborate on Data Science Projects
