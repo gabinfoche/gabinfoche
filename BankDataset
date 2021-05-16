@@ -7,6 +7,7 @@ Created on Fri May 14 18:39:46 2021
 """
 
 #Libraries 
+
 import pandas as pd
 
 import numpy as np
@@ -51,7 +52,7 @@ df_duplicates = df[df.duplicated(keep="last")]
 print(df_duplicates)
 
 
-# In[6]:
+# In[5]:
 
 
 #Drop duplicates
@@ -85,13 +86,32 @@ plt.show()
 # In[10]:
 
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-sns.boxplot(data=df,x="y",y="duration")
+df_duration=df.copy()
+df_duration['duration_mins']=df['duration']/60
+
+sn.boxplot(data=df_duration,x="y",y="duration_mins")
+
 plt.show()
 
 
-# In[11]:
+# In[14]:
+
+
+duration_campaign = sn.lmplot(x='duration_mins', y='campaign',data = df_duration,
+                     hue = 'y',
+                     fit_reg = False,
+                     scatter_kws={'alpha':0.6}, height =7)
+
+plt.axis([0,65,0,65])
+plt.ylabel('# of Calls')
+plt.xlabel('Duration(Min)')
+
+
+
+plt.show()
+
+
+# In[15]:
 
 
 import matplotlib.pyplot as plt
@@ -100,7 +120,7 @@ sns.boxplot(data=df,x="y",y="campaign")
 plt.show()
 
 
-# In[12]:
+# In[16]:
 
 
 import matplotlib.pyplot as plt
@@ -109,7 +129,7 @@ df.hist(figsize=(10,12))
 plt.show()
 
 
-# In[13]:
+# In[17]:
 
 
 sns.boxplot(data=df,x="y",y="emp.var.rate")
@@ -147,20 +167,91 @@ plt.show()
 # In[18]:
 
 
-df.columns
-
-
-# In[19]:
-
-
 sns.pairplot(df, vars=['emp.var.rate', 'cons.price.idx',
        'cons.conf.idx', 'euribor3m', 'nr.employed'])
 plt.show()
 
 
+# In[18]:
+
+
+#Deployed Model performance Evaluation
+df1=df.copy()
+df1 = df1.replace({'y':{'yes':1 ,'no':0}})
+df1['ModelPrediction'] = df1['ModelPrediction'].apply(lambda x : 1 if x >= 0.5 else 0)
+
+
+df1.head()
+
+
+# In[19]:
+
+
+#Initial Visual of Data
+cnt1=sn.countplot(x='ModelPrediction', data = df1)
+
+
 # In[20]:
 
 
+from sklearn import metrics
+from sklearn.metrics import log_loss,roc_auc_score, roc_curve
+from sklearn.metrics import precision_recall_fscore_support as score, precision_score, recall_score, f1_score
+
+confusion_matrix = pd.crosstab(df1['y'], df1['ModelPrediction'], rownames=['Actual'], colnames=['Predicted'])
+sn.heatmap(confusion_matrix, annot=True)
+plt.show()
+from sklearn.metrics import confusion_matrix
+
+cm1 = confusion_matrix(df1['y'], df1['ModelPrediction'])
+print('Confusion Matrix : \n', cm1)
+
+sensitivity1 = cm1[0,0]/(cm1[0,0]+cm1[0,1])
+print('Sensitivity : ', sensitivity1 )
+specificity1 = cm1[1,1]/(cm1[1,0]+cm1[1,1])
+print('Specificity : ', specificity1)
+
+
+# In[21]:
+
+
+#Accuracy
+print('Accuracy: ',metrics.accuracy_score(df1['y'], df1['ModelPrediction']))
+
+
+# In[22]:
+
+
+# recall: tp / (tp + fn)
+recall = recall_score(df1['y'], df1['ModelPrediction'])
+print('Recall: %f' % recall)
+
+
+# In[23]:
+
+
+#Precision
+precision = precision_score(df1['y'], df1['ModelPrediction'])
+print('Precision: %f' %precision)
+
+
+# In[24]:
+
+
+# f1: tp / (tp + fp + fn)
+f1 = f1_score(df1['y'], df1['ModelPrediction'])
+print('F1 score: %f' % f1)
+
+
+# In[25]:
+
+
+df=df.drop(['ModelPrediction'],axis=1)
+
+
+# In[55]:
+
+#Remodel Preparation
 df=df.drop(['ModelPrediction'],axis=1)
 
 #Separate Data
@@ -168,7 +259,7 @@ df_X=df.iloc[:,:-1]
 df_y=df['y']
 
 
-# In[21]:
+# In[57]:
 
 
 from sklearn.model_selection import train_test_split
@@ -188,7 +279,7 @@ print("y_Val: ",y_val.shape)
 print("y_Test: ",y_test.shape)
 
 
-# In[22]:
+# In[58]:
 
 
 #Encoding
@@ -222,12 +313,6 @@ print(y_test.shape)
 print(y_val.shape)
 
 
-# In[22]:
-
-
-X_train.info()
-
-
 # In[23]:
 
 
@@ -245,71 +330,3 @@ print(X_train.shape)
 print(X_val.shape)
 print(X_test.shape)
 
-
-# In[24]:
-
-
-from sklearn.linear_model import LogisticRegression
-from sklearn import metrics
-from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.metrics import precision_recall_fscore_support as score, precision_score, recall_score, f1_score
-
-logistic_regression = LogisticRegression(class_weight='balanced', solver='lbfgs',max_iter=1000)
-logistic_regression.fit(X_train,y_train)
-y_pred=logistic_regression.predict(X_test)
-
-print('Accuracy: ',metrics.accuracy_score(y_test, y_pred))
-
-
-# In[25]:
-
-
-#Precision
-precision = precision_score(y_test,y_pred)
-print('Precision: %f' %precision)
-
-
-# In[26]:
-
-
-# recall: tp / (tp + fn)
-recall = recall_score(y_test, y_pred)
-print('Recall: %f' % recall)
-
-
-# In[27]:
-
-
-# f1: tp / (tp + fp + fn)
-f1 = f1_score(y_test, y_pred)
-print('F1 score: %f' % f1)
-
-
-# In[28]:
-
-
-#AUC 
-#Receiver Operating Characteristics (ROC) Curve
-#Probabilities
-probs = logistic_regression.predict_proba(X_test)
-
-# keep probabilities for the positive outcome only
-probs = probs[:, 1]
-
-auc = roc_auc_score(y_test, probs)
-print('AUC - Test Set: %.2f%%' % (auc*100))
-# calculate roc curve
-fpr, tpr, thresholds = roc_curve(y_test, probs)
-# plot no skill
-plt.plot([0, 1], [0, 1], linestyle='--')
-# plot the roc curve for the model
-plt.plot(fpr, tpr, marker='.')
-plt.xlabel('False positive rate')
-plt.ylabel('Sensitivity/ Recall')
-# show the plot
-plt.show()
-
-
-# In[28]:
-
-score(y_test, y_pred)
