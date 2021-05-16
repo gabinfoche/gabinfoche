@@ -8,6 +8,7 @@ Created on Fri May 14 18:39:46 2021
 
 #Libraries 
 import pandas as pd
+
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -21,7 +22,7 @@ dataset = Computer_path +'BankDataset.csv'
 df= pd.read_csv(dataset)
 
 
-# In[3]:
+# In[2]:
 
 
 #Initial Visual of table 
@@ -29,28 +30,28 @@ print(df.head())
 print(df.shape)
 
 
-# In[4]:
+# In[3]:
 
 
 #Distribution
 print(df.describe())
 
 
-# In[5]:
+# In[4]:
 
 
 #Metadata
 print(df.info())
 
 
-# In[186]:
+# In[5]:
 
 
 df_duplicates = df[df.duplicated(keep="last")]
 print(df_duplicates)
 
 
-# In[10]:
+# In[6]:
 
 
 #Drop duplicates
@@ -58,7 +59,7 @@ df=df.drop_duplicates()
 print(df.shape)
 
 
-# In[8]:
+# In[7]:
 
 
 corrMatrix = df.corr()
@@ -67,21 +68,21 @@ sn.heatmap(corrMatrix, annot=True)
 plt.show()
 
 
-# In[9]:
+# In[8]:
 
 
 #Initial Visual of Data
 cnt=sn.countplot(x='y', data = df)
 
 
-# In[7]:
+# In[9]:
 
 
 sn.boxplot(data=df,x="y",y="age")
 plt.show()
 
 
-# In[9]:
+# In[10]:
 
 
 import matplotlib.pyplot as plt
@@ -99,7 +100,7 @@ sns.boxplot(data=df,x="y",y="campaign")
 plt.show()
 
 
-# In[13]:
+# In[12]:
 
 
 import matplotlib.pyplot as plt
@@ -108,48 +109,48 @@ df.hist(figsize=(10,12))
 plt.show()
 
 
-# In[16]:
+# In[13]:
 
 
 sns.boxplot(data=df,x="y",y="emp.var.rate")
 plt.show()
 
 
-# In[17]:
+# In[14]:
 
 
 sns.boxplot(data=df,x="y",y="euribor3m")
 plt.show()
 
 
-# In[18]:
+# In[15]:
 
 
 sns.boxplot(data=df,x="y",y="nr.employed")
 plt.show()
 
 
-# In[19]:
+# In[16]:
 
 
 sns.boxplot(data=df,x="y",y="cons.price.idx")
 plt.show()
 
 
-# In[20]:
+# In[17]:
 
 
 sns.boxplot(data=df,x="y",y="cons.conf.idx")
 plt.show()
 
 
-# In[22]:
+# In[18]:
 
 
 df.columns
 
 
-# In[28]:
+# In[19]:
 
 
 sns.pairplot(df, vars=['emp.var.rate', 'cons.price.idx',
@@ -157,71 +158,158 @@ sns.pairplot(df, vars=['emp.var.rate', 'cons.price.idx',
 plt.show()
 
 
-# In[11]:
+# In[20]:
 
 
-#Dropping extra columns
-
-from sklearn.preprocessing import OneHotEncoder
-import category_encoders as ce
-
-
-df=df.drop(['duration','ModelPrediction'],axis=1)
+df=df.drop(['ModelPrediction'],axis=1)
 
 #Separate Data
 df_X=df.iloc[:,:-1]
-df.loc[df.y == 'no'] = 0
-df.loc[df.y == 'yes'] = 1
-
 df_y=df['y']
-df_y=df_y.astype('int')
-
-#Encoding
-df_X = pd.get_dummies(df_X,columns=['job', 'marital', 'education', 'default', 'housing', 'loan',
-       'contact', 'month', 'day_of_week','poutcome'])
-print(df_X.info())
-print(df_X.tail())
 
 
-# In[27]:
+# In[21]:
 
 
-# Splitting Data 
-# 80/20/20
 from sklearn.model_selection import train_test_split
 
-#X_train, X_test, y_train, y_test = train_test_split(df_X, df_y, test_size=0.2, random_state=1)
-#X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
+train_ratio = 0.80
+validation_ratio = 0.20
+test_ratio = 0.20
 
-X_rest, X_test, y_rest, y_test = train_test_split(df_X, df_y, test_size=0.2, random_state=1)
-X_train, X_val, y_train, y_val = train_test_split(X_rest, y_rest, test_size=0.2, random_state=1)
-
-
+X_train, X_test, y_train, y_test = train_test_split(df_X, df_y, test_size=1 - train_ratio)
+X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=test_ratio/(test_ratio + validation_ratio)) 
 
 print("X_Train: ",X_train.shape)
+print("X_Val: ",X_val.shape)
 print("X_Test: ",X_test.shape)
 print("y_Train: ",y_train.shape)
+print("y_Val: ",y_val.shape)
 print("y_Test: ",y_test.shape)
-print("X_Val: ",X_val.shape)
-print("y_test: ",y_val.shape)
+
+
+# In[22]:
+
+
+#Encoding
+cat_cols = X_train.select_dtypes(include='object').columns
+
+X_train=pd.get_dummies(data=X_train, columns=cat_cols)
+X_test=pd.get_dummies(data=X_test, columns=cat_cols)
+X_val=pd.get_dummies(data=X_val, columns=cat_cols)
+
+for i in X_train.columns:
+    if i not in X_test.columns: X_test[i] = 0
+# add missing columns to train dataset with all values being 0
+for i in X_test.columns:
+    if i not in X_train.columns: X_train[i] = 0   
+for i in X_train.columns:
+    if i not in X_val.columns: X_val[i] = 0
+
+# use the same column order for the test set as for train
+X_test = X_test.reindex(X_train.columns, axis=1)
+X_val = X_val.reindex(X_train.columns, axis=1)
+
+y_train.replace({"no":0,"yes":1},inplace=True)
+y_test.replace({"no":0,"yes":1},inplace=True)
+y_val.replace({"no":0,"yes":1},inplace=True)
+
+print(X_train.shape)
+print(X_test.shape)
+print(X_val.shape)
+print(y_train.shape)
+print(y_test.shape)
+print(y_val.shape)
+
+
+# In[22]:
+
+
+X_train.info()
+
+
+# In[23]:
+
+
+# Removing duration feature 
+
+# From Train
+X_train = X_train.drop('duration', axis=1)
+# From CV
+X_val = X_val.drop('duration', axis=1)
+# From Test
+X_test = X_test.drop('duration', axis=1)
+
+
+print(X_train.shape)
+print(X_val.shape)
+print(X_test.shape)
+
+
+# In[24]:
+
+
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import precision_recall_fscore_support as score, precision_score, recall_score, f1_score
+
+logistic_regression = LogisticRegression(class_weight='balanced', solver='lbfgs',max_iter=1000)
+logistic_regression.fit(X_train,y_train)
+y_pred=logistic_regression.predict(X_test)
+
+print('Accuracy: ',metrics.accuracy_score(y_test, y_pred))
 
 
 # In[25]:
 
 
-from sklearn.linear_model import LogisticRegression
-from sklearn import metrics
-logistic_regression = LogisticRegression(class_weight='balanced', solver='lbfgs',max_iter=1000)
-logistic_regression.fit(X_train,y_train)
-y_pred=logistic_regression.predict(X_test)
+#Precision
+precision = precision_score(y_test,y_pred)
+print('Precision: %f' %precision)
 
-#confusion_matrix = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted'])
-#sn.heatmap(confusion_matrix, annot=True)
 
-print('Accuracy: ',metrics.accuracy_score(y_test, y_pred))
+# In[26]:
+
+
+# recall: tp / (tp + fn)
+recall = recall_score(y_test, y_pred)
+print('Recall: %f' % recall)
+
+
+# In[27]:
+
+
+# f1: tp / (tp + fp + fn)
+f1 = f1_score(y_test, y_pred)
+print('F1 score: %f' % f1)
+
+
+# In[28]:
+
+
+#AUC 
+#Receiver Operating Characteristics (ROC) Curve
+#Probabilities
+probs = logistic_regression.predict_proba(X_test)
+
+# keep probabilities for the positive outcome only
+probs = probs[:, 1]
+
+auc = roc_auc_score(y_test, probs)
+print('AUC - Test Set: %.2f%%' % (auc*100))
+# calculate roc curve
+fpr, tpr, thresholds = roc_curve(y_test, probs)
+# plot no skill
+plt.plot([0, 1], [0, 1], linestyle='--')
+# plot the roc curve for the model
+plt.plot(fpr, tpr, marker='.')
+plt.xlabel('False positive rate')
+plt.ylabel('Sensitivity/ Recall')
+# show the plot
 plt.show()
 
 
+# In[28]:
 
-
-
+score(y_test, y_pred)
