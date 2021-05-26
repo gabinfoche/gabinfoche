@@ -1,0 +1,182 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue May 25 04:14:46 2021
+
+@author: gabif
+"""
+
+
+#Librairies
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import seaborn as sns
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+from datetime import datetime
+from download import download
+
+pd.set_option('display.max_colwidth',None)
+#Parameters
+mpl.rcParams['figure.figsize'] = (8,6)
+mpl.rcParams['axes.grid']=False
+
+
+path = download('https://archive.ics.uci.edu/ml/machine-learning-databases/00501/PRSA2017_Data_20130301-20170228.zip', '/tmp/aq', kind="zip")
+df = pd.read_csv('/tmp/aq/PRSA_Data_20130301-20170228/PRSA_Data_Dingling_20130301-20170228.csv', encoding='ISO-8859-1')
+df
+df.info()
+df.shape
+df.columns
+
+
+#concatenate to form date
+
+def convert_to_date(x):
+    return datetime.strptime(x,'%Y %m %d %H')
+
+aq_df=pd.read_csv('/tmp/aq/PRSA_Data_20130301-20170228/PRSA_Data_Dingling_20130301-20170228.csv'
+ , parse_dates=[['year','month','day','hour']],date_parser=convert_to_date,keep_date_col = True)
+
+aq_df.info()
+
+aq_df['month']=pd.to_numeric(aq_df['month'])
+
+
+print("Rows : ", aq_df.shape[0])
+print("Columns : ", aq_df.shape[1])
+print("\nFeatures : \n ", aq_df.columns.tolist())
+print("n\Missing Values : " ,aq_df.isnull().any())
+
+
+aq_df.describe()
+
+aq_df_non_indexed=aq_df.copy()
+aq_df=aq_df.set_index('year_month_day_hour')
+
+
+#To select a particular timeframe
+aq_df.loc['2013-03-01':'2013-03-05']
+aq_df.loc['2013':'2015']
+
+pm_data=aq_df['PM2.5']
+
+pm_data.head()
+
+pm_data.plot(grid=True)
+
+
+#To visualize a particular year
+aq_df_2015=aq_df.loc['2015']
+pm_data_2015=aq_df_2015['PM2.5']
+pm_data_2015.plot(grid=True)
+
+aq_df_2016=aq_df.loc['2016']
+pm_data_2016=aq_df_2016['PM2.5']
+pm_data_2016.plot(grid=True)
+
+
+
+#To visualizer with slider
+import plotly.express as px
+
+fig=px.line(aq_df_non_indexed,x='year_month_day_hour',y='PM2.5',title='PM2.5 with Slider')
+
+fig.update_xaxes(rangeslider_visible=True)
+fig.show()
+
+# Another way of visualize it
+fig=px.line(aq_df_non_indexed,x='year_month_day_hour',y='PM2.5',title='PM2.5 with Slider')
+
+fig.update_xaxes(
+    rangeslider_visible=True,
+    rangeselector=dict(
+        buttons=list([
+            dict(count=1,label="1y",step="year", stepmode="backward"),
+            dict(count=2,label="2y",step="year", stepmode="backward"),
+            dict(count=3,label="3y",step="year", stepmode="backward"),
+            dict(step='all')
+            ])
+        )
+    )
+fig.show()
+
+
+#YOY
+
+df_2014=aq_df['2014'].reset_index()
+df_2015=aq_df['2015'].reset_index()
+df_2014['month_day_hour']=df_2014.apply(lambda x : str(x['month'])+"-"+x['day']
+                                        ,axis=1)
+df_2015['month_day_hour']=df_2015.apply(lambda x : str(x['month'])+"-"+x['day']
+                                        ,axis=1)
+
+plt.plot(df_2014['month_day_hour'],df_2014['PM2.5'])
+plt.plot(df_2015['month_day_hour'],df_2015['PM2.5'])
+plt.legend(['2014','2015'])
+plt.xlabel('Month')
+plt.ylabel('PM2.5')
+plt.title('Air Quality plot for the year 2014 and 2015')
+
+
+
+# Statistics by month
+aq_df['2014':'2016'][['month','PM2.5']].groupby('month').describe()
+             
+aq_df['2014':'2016'][['month','PM2.5','TEMP']].groupby('month').agg({'PM2.5':['max'],
+                                                                     'TEMP':['min','max']})
+
+aq_df_2015=aq_df['2015']
+pm_data_2015=aq_df_2015[['PM2.5','TEMP']]
+pm_data_2015.plot(subplots=True)
+
+#Lag plot to understand changes per 24 hours (autocorrelation - correlation withon itself)
+aq_df[['PM2.5','TEMP']].hist()
+
+#day
+pd.plotting.lag_plot(aq_df['TEMP'],lag=24)
+
+#yearly
+pd.plotting.lag_plot(aq_df['TEMP'],lag=8640)
+
+#6months
+pd.plotting.lag_plot(aq_df['TEMP'],lag=4320)
+
+#3months
+pd.plotting.lag_plot(aq_df['TEMP'],lag=2150)
+
+
+
+aq_df_2015=aq_df.loc['2015']
+pm_data_2015=aq_df_2015[['PM2.5','TEMP','PRES']]
+pm_data_2015.plot(subplots=True)
+
+multi_data = aq_df[['TEMP','PRES','DEWP','RAIN','PM2.5']]
+multi_data.plot(subplots=True)
+
+multi_data = aq_df[['SO2','NO2','O3','CO','PM2.5']]
+multi_data.plot(subplots=True)
+
+aq_df['2014':'2015'][['PM2.5','O3']].plot(figsize=(15,8),linewidth=3,fontsize=15)
+plt.xlabel('year_month_day_hour',fontsize=20)
+
+#identify null
+aq_df.isnull().any()
+aq_df.isnull().sum()
+
+aq_df_na = aq_df.copy()
+
+aq_df_na=aq_df_na.dropna()
+
+pd.plotting.autocorrelation_plot(aq_df_na['2014':'2016']['TEMP'])
+
+aq_df_na['TEMP'].resample('1m').mean()
+
+pd.plotting.autocorrelation_plot(aq_df_na['2014':'2016']['TEMP'].resample('1m').mean())
+pd.plotting.autocorrelation_plot(aq_df_na['2014':'2016']['PM2.5'].resample('1m').mean())
+
+aq_df.groupby('wd').agg(median=('PM2.5','median'),mean=('PM2.5','mean')
+                       ,max=('PM2.5','max'),min=('PM2.5','min')).reset_index()
