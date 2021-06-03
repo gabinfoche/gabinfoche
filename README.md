@@ -1,5 +1,5 @@
 - 👋 Hi, I’m Gabin Foche Kamgang
-- 👀 I’m a Data Enthusisat
+- 👀 I’m a Data Enthusiast
 - 🌱 I’m currently learning machine learning and Artificial Intelligence
 - 💞️ I’m looking to collaborate on Data Science Projects
 - 📫 How to reach me gabinfoche@gmail.com
